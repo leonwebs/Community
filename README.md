@@ -14,4 +14,5 @@ makers, to quantitatively evaluate how well the boundaries provided by
 the commission preserve communities and decide whether a challenge is
 warranted.
 
-
+Here is the [Loom recording (6:07)](https://www.loom.com/share/a799bcc0e55440eaaf959a72c977276d) 
+with our narrative.  
