@@ -60,7 +60,7 @@ distpop = tractdat.population.sum() / ndist
 # Set the seed for reproducibility
 np.random.seed(1234)
 
-import region
+reload(region)
 
 popweightfactor=1
 tractdat.population = tractdat.population*popweightfactor

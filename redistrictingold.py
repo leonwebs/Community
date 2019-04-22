@@ -54,7 +54,7 @@ agecat = [i for i in tractdat.columns if 'age' in i and i not in badcol]
 #incomecat = []
 #all income categories have some nans!
 educationcat = [i for i in tractdat.columns if 'gr' in i and i not in badcol]
-educationcat.extend(['enrolled', 'n_enrolled'])
+educatoncat.extend(['enrolled', 'n_enrolled'])
 
 tractdatchoice = tractdat[racecat]
 
@@ -85,18 +85,16 @@ np.random.seed(1234)
 
 #ps.region.maxp needs shapefiles to say which tracts are contiguous
 w = ps.queen_from_shapefile('censustracts17/censustracts17.shp', idVariable = 'geonum')
-w = ps.queen_from_shapefile('censuscounties17/censuscounties17.shp', idVariable = 'geonum')
 
 z = tractdat[racecat].values
-z = countydat[racecat].values
 print("Beginning maxp regionalization ...")
-maxp = ps.region.Maxp(w, z, distpop*.99, countydat.population, initial=300)
+maxp = ps.region.Maxp(w, z, distpop*.99, tractdat.population, initial=300)
 print("... done.")
 
-lbls = pd.Series(maxp.area2region).reindex(tractdat['geonum'])
+lbls = pd.Series(maxp.area2region)
 
 f, ax = plt.subplots(1, figsize=(9, 9))
-tractdat.assign(cl=lbls.values).plot(column='cl', 
+countydat.assign(cl=lbls.values).plot(column='cl', 
                categorical=True, 
                legend=True, 
                linewidth=0.1, 
