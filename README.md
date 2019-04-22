@@ -1,5 +1,4 @@
-##
-![gocode-logo](https://cloud.githubusercontent.com/assets/100216/12792545/96727a8e-ca69-11e5-9b9a-cddfa80d1c4b.png)
+## Communities of interest for congressional redistricting in Colorado
 --
 This is an entry into the data analysis track.  Colorado's
 redistricting commission is entrusted with the authority to draw
@@ -14,3 +13,5 @@ This code provides a way for interest groups, the business desicion
 makers, to quantitatively evaluate how well the boundaries provided by
 the commission preserve communities and decide whether a challenge is
 warranted.
+
+
