@@ -16,3 +16,8 @@ warranted.
 
 Here is the [Loom recording (6:07)](https://www.loom.com/share/a799bcc0e55440eaaf959a72c977276d) 
 with our narrative.  
+
+This is the main file to examine, the Jupyter notebook with the analysis:
+[Redistricting.ipynb](https://github.com/GoCodeColorado/CommunityCluster/blob/master/Redistricting.ipynb)  
+It is currently missing the maps.  It will be updated when they become
+available.  
