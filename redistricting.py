@@ -37,9 +37,9 @@ def loaddata(filename, url):
 
     return geodat
 #tractdat.plot()
-
 tractdat = loaddata('censustracts17','https://data.colorado.gov/resource/aevh-apr2.geojson?$limit=1300')
 countydat = loaddata('censuscounties17','https://data.colorado.gov/resource/ewkj-ipn7.geojson')
+currentdist = loaddata('censusdist','https://data.colorado.gov/resource/jz4n-qus2.geojson') 
 
 #medians sometimes not defined
 print('The following columns have nan elements')
@@ -60,13 +60,21 @@ distpop = tractdat.population.sum() / ndist
 # Set the seed for reproducibility
 np.random.seed(1234)
 
+import region
+
+popweightfactor=1
+tractdat.population = tractdat.population*popweightfactor
+
 pregazp = region.p_regions.azp.AZP()
 print("Beginning regionalization ...")
-pregazp.fit_from_geodataframe(countydat, racecat, ndist, contiguity = "queen")
+pregazp.fit_from_geodataframe(tractdat, ['population']+racecat, 
+                              ndist, contiguity = "queen", 
+                              objective_func = region.objective_function.ObjectiveFunctionPairwiseWithTotal() )
 print("... done.")
+tractdat.population = tractdat.population/popweightfactor
 
 f, ax = plt.subplots(1, figsize=(9,9))
-ctylabeled = countydat.assign(cl = pregazp.labels_)
+ctylabeled = tractdat.assign(cl = pregazp.labels_)
 ctylabeled.plot(column = 'cl', 
                 categorical = True, 
                 legend = True, 
@@ -76,9 +84,12 @@ ctylabeled.plot(column = 'cl',
 ax.set_axis_off()
 f.show()
 
-ctylabeled.to_file(filename + '_lab.geojson', driver='GeoJSON')
+regpops = [sum([ctylabeled.population[i] for i in np.where(ctylabeled.cl == j)[0]]) for j in range(7)]
+print(regpops)
+np.log10(np.var(regpops))
+
+ctylabeled.to_file('censuscounties17_lab.geojson', driver='GeoJSON')
 
 
 
 #lots of help from http://darribas.org/gds_scipy16/ipynb_md/07_spatial_clustering.html
- 
