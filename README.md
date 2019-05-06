@@ -1,6 +1,6 @@
 ## Communities of interest for congressional redistricting in Colorado
---
-This is an entry into the data analysis track.  Colorado's
+---
+Colorado's
 redistricting commission is entrusted with the authority to draw
 Congressional district boundaries.  Among its considerations must be 
 >... communities of interest, including ethnic, cultural, economic,
@@ -9,15 +9,11 @@ Congressional district boundaries.  Among its considerations must be
 [Redistricting provisions](https://www.colorado.gov/pacific/cga-redistrict/constitutional-provisions)
 
 Preservation of communities of interest is not quantitatively defined.
-This code provides a way for interest groups, the business desicion
-makers, to quantitatively evaluate how well the boundaries provided by
+This code provides a way for interest groups to quantitatively evaluate 
+how well the boundaries provided by
 the commission preserve communities and decide whether a challenge is
 warranted.
 
-Here is the [Loom recording (6:07)](https://www.loom.com/share/a799bcc0e55440eaaf959a72c977276d) 
-with our narrative.  
-
-This is the main file to examine, the Jupyter notebook with the analysis:
+These Jupyter notebooks have plots of districts and preliminary analysis.
 [Redistricting.ipynb](https://github.com/GoCodeColorado/CommunityCluster/blob/master/Redistricting.ipynb)  
-It is currently missing the maps.  It will be updated when they become
-available.  
+[DistAnalysis.ipynb](https://github.com/GoCodeColorado/CommunityCluster/blob/master/DistAnalysis.ipynb)  
