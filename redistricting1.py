@@ -110,6 +110,7 @@ We'll only do it if asked or if there's no prior saved file.  '''
 #ax.set_axis_off()
 #plt.show()
 
+
 '''Of course these cannot be congressional districts.  There must be only
 7 districts, one for each seat Colorado has in the House of
 Representatives.  In addition, there must be close to equal population
@@ -154,10 +155,11 @@ if new_azp == True or 'regindex_azp' not in geodata['tracts'].columns:
 '''Plotting this we have'''
 
 f1, ax1 = plt.subplots(1, figsize=(9,9))
-geodata['counties'].plot(column = 'regindex_azp', 
+geodata['tracts'].plot(column = 'regindex_azp', 
        categorical = True, 
        linewidth = .1,
        edgecolor = 'white',
+       legend = True,
        ax = ax1)
 ax1.set_axis_off()
 
@@ -183,7 +185,6 @@ geodata['districts'].plot(column="emp",
        ax=ax2)
 ax2.set_axis_off()
 
-temp = gpd.read_file('censuscounties17_lab.geojson')
 #os.path.isfile('censuscounties17_lab.geojson')
 #os.path.pardir
 #os.getcwd()
@@ -193,11 +194,15 @@ temp = gpd.read_file('censuscounties17_lab.geojson')
 regpops = [sum([geodata['tracts'].population[i] for i in np.where(geodata['tracts'].regindex_azp == j)[0]]) for j in range(7)]
 spanpops= [sum([geodata['tracts'].hispanic[i] for i in np.where(geodata['tracts'].regindex_azp == j)[0]]) for j in range(7)]
 whitepops = [sum([geodata['tracts'].white_nh[i] for i in np.where(geodata['tracts'].regindex_azp == j)[0]]) for j in range(7)]
+ntv= [sum([geodata['tracts'].ntvam_nh[i] for i in np.where(geodata['tracts'].regindex_azp == j)[0]]) for j in range(7)]
 
 f3, ax3 = plt.subplots(1)
 plt.bar(range(7),[i/(j+1) for (i,j) in zip(spanpops, regpops)])
 
 f4, ax4 = plt.subplots(1)
+plt.bar(range(7),[i/(j+1) for (i,j) in zip(ntv, regpops)])
+
+f5, ax5 = plt.subplots(1)
 plt.bar(range(7),[i/(j+1) for (i,j) in zip(whitepops, regpops)])
 
 #lots of help from http://darribas.org/gds_scipy16/ipynb_md/07_spatial_clustering.html
