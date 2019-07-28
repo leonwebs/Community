@@ -59,10 +59,10 @@ Working with the tracts data takes a lot of time because there are
 currdat to 'counties' lets us check the code quickly and then
 resetting it to 'tracts' does what we want.
 
+```python
 currdat = 'counties'
 
 
-```python
 print('The following columns have nan elements')
 badcol = geodata[currdat].columns[geodata[currdat].isnull().any()]
 print(list(badcol))
@@ -83,8 +83,9 @@ characteristicts.  The number of regions is not set, but is chosen by
 the algorithm to optimize intra-region similarity.  It does require a
 minimum value for each region, in this case we'll say that each region
 requires at least 250,000 people, about 5% of the state.  
-# '''The maxp algorithm takes some time with the 1250 census tracts.  
-# We'll only do it if asked or if there's no prior saved file.  '''
+
+The maxp algorithm takes some time with the 1250 census tracts.  
+We'll only do it if asked or if there's no prior saved file. 
 
 ```python
 new_maxp = False
@@ -94,14 +95,14 @@ if new_maxp == True or 'regindex_maxp' not in geodata[currdat].columns:
    w = ps.queen_from_shapefile('data/'+currdat+'/'+currdat+'.shp', idVariable = 'geonum')  
    z = geodata[currdat][racecat].values
 
-   print("Beginning maxp regionalization ...")
+   print("Beginning maxp regionalization of "+currdat+ "...")
    maxp = ps.region.Maxp(w, z, 500000 , geodata[currdat].population, initial=300)
    print("... done.")
-   
-   lbls = pd.Series(maxp.area2region).reindex(geodata[currdat]['geonum'].astype(str))
+
+   lbls = pd.Series(maxp.area2region).reindex(geodata[currdat]['geonum']).astype(str)   
    geodata[currdat]= geodata[currdat].assign(regindex_maxp = lbls.values)
    
-   geodata[currdat].to_file('data/'+currdat+'.geojson', driver='GeoJSON')
+   geodata[currdat].to_file('data/'+currdat)
    
    
 
@@ -151,7 +152,7 @@ if new_azp == True or 'regindex_azp' not in geodata[currdat].columns:
     geodata[currdat].population = geodata[currdat].population*popweightfactor
     
     pregazp = region.p_regions.azp.AZP()
-    print("Beginning AZP regionalization ...")
+    print("Beginning AZP regionalization of "+currdat+ "...")
     pregazp.fit_from_geodataframe(geodata[currdat], ['population']+racecat, 
                                   ndist, contiguity = "queen", 
                                   objective_func = region.objective_function.ObjectiveFunctionPairwiseWithTotal() )
@@ -160,7 +161,7 @@ if new_azp == True or 'regindex_azp' not in geodata[currdat].columns:
     
     geodata[currdat]= geodata[currdat].assign(regindex_azp = pregazp.labels_)
     
-    geodata[currdat].to_file('data/'+currdat+'.geojson', driver='GeoJSON')
+    geodata[currdat].to_file('data/'+currdat)
     
     
 
@@ -233,7 +234,7 @@ candidate would have to address the concerns of this group.
 
 ```python
 f4, ax4 = plt.subplots(1)
-plt.bar(range(7),[i/(j+1) for (i,j) in zip(ntv, regpops)])
+plt.bar(range(7),[i/(j+1) for (i,j) in zip(ntvpops, regpops)])
 ax4.set_title("Native American Proportion of each District")
 ```
 
