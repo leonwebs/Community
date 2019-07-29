@@ -1,5 +1,6 @@
-### Districts that preserve "communities of interest"
+## Districts that preserve "communities of interest"
 
+#### Loading libraries and data
 
 First we import our libraries and load the data files.  We'll use
 census demographic data to quantify the community of interest.
@@ -91,19 +92,25 @@ racecat = [ 'hispanic', 'white_nh', 'black_nh', 'ntvam_nh', 'asian_nh', 'hawpi_n
 
 ```
 The following columns have nan elements
-[]
+['med_age', 'med_fam_in', 'med_g_rent', 'avghhsize', 'med_hm_val',
+'med_c_rent', 'med_hh_inc', 'med_yr_blt', 'per_cap_in']
 ```
 
 
 
+### Generating District Maps
+
+#### Max-p
+
 First we'd like to answer the question "Where are the communities?"
 The `max-p` algorithm divides a set of areas into regions with similar
-characteristicts.  The number of regions is not set, but is chosen by
+characteristics.  The number of regions is not set, but is chosen by
 the algorithm to optimize intra-region similarity.  It does require a
 minimum value for each region, in this case we'll say that each region
 requires at least 250,000 people, about 5% of the state.  
-# '''The maxp algorithm takes some time with the 1250 census tracts.  
-# We'll only do it if asked or if there's no prior saved file.  '''
+
+The maxp algorithm takes some time with the 1250 census tracts.  
+We'll only do it if asked or if there's no prior saved file. 
 
 
 ```python
@@ -138,7 +145,7 @@ plt.show()
 ```
 
 ```
-Beginning maxp regionalization of counties...
+Beginning maxp regionalization of tracts...
 ... done.
 ```
 
@@ -150,7 +157,26 @@ Beginning maxp regionalization of counties...
 Of course these cannot be congressional districts.  There must be only
 7 districts, one for each seat Colorado has in the House of
 Representatives.  In addition, there must be close to equal population
-in each district.  
+in each district.  Here is how the current map does it.
+
+
+```python
+
+f2, ax2 = plt.subplots(1, figsize=(9, 9))
+geodata['districts'].plot(column="emp",
+       linewidth = .1, 
+       categorical = True,
+       edgecolor = 'white',
+       ax=ax2)
+ax2.set_axis_off()
+```
+
+![](figures/Redistricting_figure4_1.png)\
+
+
+
+
+#### AZP
 
 Now we will use the AZP algorithm to generate a specific number of
 districts.  The algorithm optimizes an objective function, which in this
@@ -204,7 +230,7 @@ ax1.set_axis_off()
 ```
 
 ```
-Beginning AZP regionalization of counties...
+Beginning AZP regionalization of tracts...
 n_regions_per_comp {0: 7}
 comp_label 0
 n_regions_in_comp 7
@@ -212,7 +238,7 @@ Regions in comp: {0, 1, 2, 3, 4, 5, 6}
 ... done.
 ```
 
-![](figures/Redistricting_figure4_1.png)\
+![](figures/Redistricting_figure5_1.png)\
 
 
 
@@ -222,37 +248,16 @@ districts (below) or respect for natural features like mountains.
 These could be included in the analysis by editing the objective
 function.  In the next section we work on evaluating the regionalizations. 
 
-## Districting Evaluation
+#### Evaluating District Maps
 
 With various algorithms and weight functions we can generate many
 candidate maps.  In this section we will look at how well they satisfy
 the criteria provided by law.  
 
-First, for comparison, here are Colorado's current congressional
-districts.    
 
-
-
-
-
-```python
-
-f2, ax2 = plt.subplots(1, figsize=(9, 9))
-geodata['districts'].plot(column="emp",
-       linewidth = .1, 
-       categorical = True,
-       edgecolor = 'white',
-       ax=ax2)
-ax2.set_axis_off()
-```
-
-![](figures/Redistricting_figure5_1.png)\
-
-
-
-
-This census tract regionalization optimizes for keeping racial and
-ethnic groups from being divided.  Let's see populations by district.
+The AZP regionalization optimizes for keeping racial and ethnic groups
+from being divided.  Let's see populations by district to see how well
+it does.
 
 
 
@@ -346,12 +351,23 @@ print('The smallest district is ', 1-min(regpops)/distpop, " below average")
 ```
 
 ```
-The largest district is  0.2200571726135785  above average
-The smallest district is  0.12641361135682605  below average
+The largest district is  0.0011786954115307058  above average
+The smallest district is  0.0021947867744047667  below average
 ```
 
 
     
 
 Equal populations is part of the goal of the regionalization analysis,
-but it isn't weighted enough.   
+but it isn't weighted enough.
+
+####Future Work
+
+We'll have to better weight the requirement of even populations in
+order to have a map that passes muster.  In addition, we have a sense
+of how well the regionalization preserves communities of interest, but
+could we do better?  At what cost?  To answer that quantitatively, I'd
+like to generate a set of random regionalizations and see where our
+optimized regionalization ranks, both in variables that were optimized
+and those that weren't.  This pseudo-p value will characterize how
+different weightings of variables affect the final result.  
