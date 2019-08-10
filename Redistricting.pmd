@@ -166,7 +166,7 @@ ndist = 7
 
 new_azp = False
 
-if new_azp == True or 'regindex_azp' not in geodata[currdat].columns:
+if new_azp == True or 'reg_azp' not in geodata[currdat].columns:
 
     popweightfactor=1
     geodata[currdat].population = geodata[currdat].population*popweightfactor
@@ -179,14 +179,14 @@ if new_azp == True or 'regindex_azp' not in geodata[currdat].columns:
     print("... done.")
     geodata[currdat].population = geodata[currdat].population/popweightfactor
     
-    geodata[currdat]= geodata[currdat].assign(regindex_azp = pregazp.labels_)
+    geodata[currdat]= geodata[currdat].assign(reg_azp = pregazp.labels_)
     
     geodata[currdat].to_file('data/'+currdat)
     
     
 
 f1, ax1 = plt.subplots(1, figsize=(9,9))
-geodata[currdat].plot(column = 'regindex_azp', 
+geodata[currdat].plot(column = 'reg_azp', 
        categorical = True, 
        linewidth = .1,
        edgecolor = 'white',
@@ -280,6 +280,22 @@ print('The smallest district is ', 1-min(regpops)/distpop, " below average")
 Equal populations is part of the goal of the regionalization analysis,
 but it isn't weighted enough.
 
+
+
+#### Pseudo p value
+
+To characterize how well a map does on the criteria we'll generate
+a set of random maps.  We can characterize how well it does by finding
+its rank in the random set.  If only one thing is being optimized,
+presumably it will be better than all or almost all the random maps,
+but if more than one thing is being optimized, we can see how a given
+weighting trades off on the different criteria.
+
+
+
+
+
+
 ####Future Work
 
 We'll have to better weight the requirement of even populations in
@@ -290,3 +306,5 @@ like to generate a set of random regionalizations and see where our
 optimized regionalization ranks, both in variables that were optimized
 and those that weren't.  This pseudo-p value will characterize how
 different weightings of variables affect the final result.  
+
+
