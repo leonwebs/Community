@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ## Districts that preserve "communities of interest"
 
 #### Loading libraries and data
@@ -308,3 +309,4 @@ like to generate a set of random regionalizations and see where our
 optimized regionalization ranks, both in variables that were optimized
 and those that weren't.  This pseudo-p value will characterize how
 different weightings of variables affect the final result.  
+
