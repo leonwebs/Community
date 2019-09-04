@@ -5,7 +5,6 @@ import numpy as np
 
 from region.util import get_metric_function
 
-
 class ObjectiveFunction(ABC):
     def __init__(self, metric=None):
         """
@@ -108,6 +107,8 @@ class ObjectiveFunctionCenter(ObjectiveFunction):
 
             * reducing the intraregional distances to a scalar and
             * reducing these scalars of the regions to one single scalar.
+        For example, the defaults make the objective function the sum over regions
+        of the sum over areas within the region of distances from the mean.
         """
         self.center = center
         self.reduction = reduction
@@ -164,53 +165,91 @@ class ObjectiveFunctionCenter(ObjectiveFunction):
 
         return diff
 
-class ObjectiveFunctionPairwiseWithTotal(ObjectiveFunction):
+class ObjectiveFunctionBalance(ObjectiveFunction):
     def __call__(self, labels, attr):
         """
-        modify ObjectiveFunctionPairwise so that the first attribute
-        is not included in the metric for computing intraregion heterogenity
-        Instead the region's total value of the first attribute is 
-        calculated, and the objective function includes the variance 
-        of the regions's totals.  
-        
-        Examples
-        --------
-        >>> from sklearn.metrics.pairwise import distance_metrics
-        >>> metric = distance_metrics()["manhattan"]
-        >>> labels = np.array([0, 0, 0, 0, 1, 1])
-        >>> attr = np.arange(len(labels)).reshape(-1, 1)
-        >>> objective = ObjectiveFunctionPairwise(metric)
-        >>> int(objective(labels, attr))
-        11
+        Objective function that tries to reduce variation between 
+        regions' total magnitudes
         """
         regions_set = set(labels)
-        popu = attr[:,0]
-        regionpops = [sum([popu[i] for i in np.where(labels == j)[0]]) for j in regions_set]
-        attr = attr[:,1:]
-        obj_val = np.var(regionpops) + sum(
-            self.metric(attr[i].reshape(1, -1), attr[j].reshape(1, -1))
-            for r in regions_set
-            for i, j in itertools.combinations(np.where(labels == r)[0], 2))
+        region_totals =[sum(attr[i] for i in np.where(labels == r)[0])
+                        for r in regions_set]
+        obj_val = max(region_totals)-min(region_totals)
         return obj_val
 
     def update(self, moving_area, recipient_region, labels, attr):
-        donor_region = labels[moving_area]
-        moving_popu = attr[moving_area,0]
-        
-        attr_donor = attr[labels == donor_region]
-        pop_donor = sum(attr_donor[:,0])
-        attr_donor = attr_donor[:,1:]
-        donor_diff = sum(
-            self.metric(attr_donor, attr[moving_area].reshape(1, -1)))
-        
+        old = self.__call__(labels, attr)
+        comebackregion = labels[moving_area]
+        labels[moving_area] = recipient_region
+        new = self.__call__(labels, attr)
+        labels[moving_area] = comebackregion
+        return new - old
 
-        attr_recipient = attr[labels == recipient_region]
-        pop_recipient = sum(attr_recipient[:,0])
-        attr_recipient = attr_recipient[:,1:]
-        recipient_diff = sum(
-            self.metric(attr_recipient, attr[moving_area].reshape(1, -1)))
+
+class ObjectiveFunctionComposite(ObjectiveFunction):
+    """Create new class that combines objective functions for several
+    groups of attributes.  This accepts a list of tuples the first
+    element of which another objective function and the rest of which
+    are its arguments.
         
-        varchange = -2*moving_popu*(pop_donor - pop_recipient- moving_popu) 
-        
-        return recipient_diff - donor_diff + varchange
+    Examples
+    --------
+    >>> from sklearn.metrics.pairwise import distance_metrics
+    >>> metric = distance_metrics()["manhattan"]
+    >>> labels = np.array([0, 0, 0, 0, 1, 1])
+    >>> attr = np.arange(len(labels)).reshape(-1, 1)
+    >>> objective = ObjectiveFunctionComposite([ObjectiveFunctionPairwise,ObjectiveFunctionCenter], 
+                                                [(), (np.sum, )], metric)
+    >>> int(objective(labels, attr))
+    11
+    """
+    def __init__(self, functiontuples, attrlist, weights = None, metric = None):
+        """
+        Parameters
+        ----------
+        functiontuples: list
+            list of tuples containing a function name, function init arguments, 
+            and length of sub section of attr
+        weights: list
+            How to weight each function.  
+        met : function
+            The metric to use for all listed functions and to compose 
+            the results of each function
+            Refer to the metric argument in
+            :meth:`ObjectiveFunction.__init__`.
+        """
+        super().__init__(metric)
+        self.weights = weights
+        self.get_ranges_from_attrlist(attrlist)
+        self.attr = [i for j in attrlist for i in j]
+        self.funclist = [f[0](metric = self.metric, *f[1]) for f in functiontuples]
+
+    def get_ranges_from_attrlist(self, attrlist):
+        self.ranges = [0]
+        for it in attrlist:
+            try:
+                l = len(it)
+            except TypeError:
+                l = 1
+            self.ranges.append( self.ranges[-1]+l )
+        self.ranges = list(zip(self.ranges, self.ranges[1:]))
+
+    def __call__(self, labels, attr):
+        vec = self.objvec(labels, attr)
+        return float(self.metric(vec, 0*vec))
+
+    def objvec(self, labels, attr):
+        objvec = [f(labels, attr[:,slice(*r)]) for (f,r) in zip(self.funclist, self.ranges)]
+        if self.weights is not None:
+            objvec *= np.array(self.weights)
+        return  np.array(objvec).reshape(1,-1)
+
+    def update(self, moving_area, recipient_region, labels, attr):
+        old = self.objvec(labels, attr)
+        ups = np.array([f.update(moving_area, recipient_region, labels, attr[:,slice(*r)])
+                        for (f,r) in zip(self.funclist, self.ranges)]).reshape(1,-1)
+        return float(self.metric(old, old+ups))
+
+
+
 

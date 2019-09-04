@@ -2,25 +2,29 @@
 
 #### Loading libraries and data
 
-First we import our libraries and load the data files.  We'll use
-census demographic data to quantify the community of interest.
-Keeping the scope narrow, we'll just examine race and ethnicity, but
-income, education level, or other indicators may be used.  We also
-load current districts to evaluate how well they preserve communities
-of interest.  When the redistricting commission produces new
-districts, they may be evaluated, too.  Finally, we include census
-data by county, which can validate our code more quickly because it
-has many fewer areas to cluster.  
+First we import our libraries and load the data files.  We'll use 
+census demographic data to quantify the community of
+interest. Keeping the scope narrow, we'll just examine race and
+ethnicity, but income, education level, or other indicators may be
+used.  We also load current districts to evaluate how well they
+preserve communities of interest.  When the redistricting commission
+produces new districts, they may be evaluated, too.  Finally, we
+include census data by county, which can validate our code more
+quickly because it has many fewer areas to cluster.
 
 
-```python
+
+```python Imports
 import os 
-import pysal as ps
 import matplotlib.pyplot as plt
+orig_backend = plt.get_backend()
+import pysal as ps
+plt.switch_backend(orig_backend)
 import numpy as np
 import pandas as pd
 import geopandas as gpd
 import region
+from helpers.objective_functionpopu import ObjectiveFunctionComposite, ObjectiveFunctionBalance
 
 
 def loaddata(filename, url):
@@ -30,7 +34,7 @@ def loaddata(filename, url):
         geodat.to_file('data/'+filename + '.geojson', driver='GeoJSON')
         geodat.to_file('data/'+filename)
     else:
-        geodat = gpd.read_file('data/'+filename)
+        geodat = gpd.read_file('data/'+filename+'.geojson')
     #convert all to numeric where possible
     geodat = geodat.apply(pd.to_numeric, errors = 'ignore')
     #'pop' is not a good name for population
@@ -38,14 +42,13 @@ def loaddata(filename, url):
         geodat.rename({'pop':'population'}, axis = 'columns', inplace = True)
 
     return geodat
-
 files = ['tracts', 'counties', 'districts']
-urls = ['https://data.colorado.gov/resource/aevh-apr2.geojson?$limit=1300',
-        'https://data.colorado.gov/resource/ewkj-ipn7.geojson',
-        'https://data.colorado.gov/resource/jz4n-qus2.geojson'] 
+urls = {divs: url for (divs,url) in zip(files,
+                                        ['https://data.colorado.gov/resource/aevh-apr2.geojson?$limit=1300',
+                                         'https://data.colorado.gov/resource/ewkj-ipn7.geojson',
+                                         'https://data.colorado.gov/resource/jz4n-qus2.geojson']) }
 
-geodata = {eachfile: loaddata(eachfile, eachurl) for (eachfile, eachurl) in zip(files, urls)}
-
+geodata = {eachfile: loaddata(eachfile, urls[eachfile]) for eachfile in files}
 ```
 
 
@@ -60,9 +63,9 @@ Working with the tracts data takes a lot of time because there are
 currdat to 'counties' lets us check the code quickly and then
 resetting it to 'tracts' does what we want.
 
-```python
-currdat = 'tracts'
 
+```python Categories
+currdat = 'counties'
 
 print('The following columns have nan elements')
 badcol = geodata[currdat].columns[geodata[currdat].isnull().any()]
@@ -75,8 +78,8 @@ racecat = [ 'hispanic', 'white_nh', 'black_nh', 'ntvam_nh', 'asian_nh', 'hawpi_n
 #all income categories have some nans!
 #educationcat = [i for i in geodata[currdat].columns if 'gr' in i and i not in badcol]
 #educationcat.extend(['enrolled', 'n_enrolled'])
-
 ```
+
 
 ### Generating District Maps
 
@@ -92,33 +95,28 @@ requires at least 250,000 people, about 5% of the state.
 The maxp algorithm takes some time with the 1250 census tracts.  
 We'll only do it if asked or if there's no prior saved file. 
 
-```python
+```python Max P
+
 new_maxp = False
 
-if new_maxp == True or 'regindex_maxp' not in geodata[currdat].columns:
-
-   w = ps.queen_from_shapefile('data/'+currdat+'/'+currdat+'.shp', idVariable = 'geonum')  
-   z = geodata[currdat][racecat].values
+if new_maxp == True or 'reg_maxp' not in geodata[currdat].columns:
 
    print("Beginning maxp regionalization of "+currdat+ "...")
-   maxp = ps.region.Maxp(w, z, 500000 , geodata[currdat].population, initial=300)
+   maxp = region.max_p_regions.heuristics.MaxPRegionsHeu()
+   maxp.fit_from_geodataframe(geodata[currdat], racecat, 'population', 500000, contiguity = 'queen')
    print("... done.")
 
-   lbls = pd.Series(maxp.area2region).reindex(geodata[currdat]['geonum']).astype(str)   
-   geodata[currdat]= geodata[currdat].assign(regindex_maxp = lbls.values)
+   geodata[currdat]= geodata[currdat].assign(reg_maxp = maxp.labels_)
    
-   geodata[currdat].to_file('data/'+currdat)
-   
-   
-
+   geodata[currdat].to_file('data/'+currdat+'.geojson', driver = 'GeoJSON')
 
 
 f, ax = plt.subplots(1, figsize=(9, 9))
-geodata[currdat].assign(cl=lbls.values).plot(column='cl',
-                                     categorical=True,
-                                     linewidth=0.1,
-                                     edgecolor='white',
-                                     ax=ax)
+geodata[currdat].plot(column='reg_maxp',
+                      categorical=True,
+                      linewidth=0.1,
+                      edgecolor='white',
+                      ax=ax)
 ax.set_axis_off()
 plt.show()
 ```
@@ -130,7 +128,8 @@ Of course these cannot be congressional districts.  There must be only
 Representatives.  In addition, there must be close to equal population
 in each district.  Here is how the current map does it.
 
-```python 
+
+```python Current Districts
 
 f2, ax2 = plt.subplots(1, figsize=(9, 9))
 geodata['districts'].plot(column="emp",
@@ -160,39 +159,57 @@ Again we'll only do it if asked or if there is no prior saved file.
 
 
 
-```python
+
+```python AZP
 
 ndist = 7
 
-new_azp = False
+new_azp = True
+if new_azp == True or 'reg_azp' not in geodata[currdat].columns:
 
-if new_azp == True or 'regindex_azp' not in geodata[currdat].columns:
-
-    popweightfactor=1
-    geodata[currdat].population = geodata[currdat].population*popweightfactor
-    
     pregazp = region.p_regions.azp.AZP()
     print("Beginning AZP regionalization of "+currdat+ "...")
-    pregazp.fit_from_geodataframe(geodata[currdat], ['population']+racecat, 
+    func = ObjectiveFunctionComposite(
+        [(ObjectiveFunctionBalance, ()), (region.objective_function.ObjectiveFunctionPairwise, ())],
+        [['population'], racecat]
+    )
+    pregazp.fit_from_geodataframe(geodata[currdat], func.attr, 
                                   ndist, contiguity = "queen", 
-                                  objective_func = region.objective_function.ObjectiveFunctionPairwiseWithTotal() )
+                                  objective_func = func
+                                  )
     print("... done.")
-    geodata[currdat].population = geodata[currdat].population/popweightfactor
-    
-    geodata[currdat]= geodata[currdat].assign(regindex_azp = pregazp.labels_)
-    
-    geodata[currdat].to_file('data/'+currdat)
-    
     
 
+    
+    geodata[currdat].to_file('data/'+currdat+'.geojson', driver = 'GeoJSON')
+
+
 f1, ax1 = plt.subplots(1, figsize=(9,9))
-geodata[currdat].plot(column = 'regindex_azp', 
+geodata[currdat].plot(column = 'reg_azp', 
        categorical = True, 
        linewidth = .1,
        edgecolor = 'white',
        legend = True,
        ax = ax1)
 ax1.set_axis_off()
+```
+
+```python test
+bob = region.p_regions.azp.AZP()
+print('azp test')
+bob.fit_from_geodataframe(geodata[currdat], 'population', ndist, contiguity = 'queen',
+                          objective_func = region.objective_function.ObjectiveFunctionPairwise())
+geodata[currdat]= geodata[currdat].assign(reg_azp = pregazp.labels_)
+
+f1, ax1 = plt.subplots(1, figsize=(9,9))
+geodata[currdat].plot(column = 'reg_azp', 
+       categorical = True, 
+       linewidth = .1,
+       edgecolor = 'white',
+       legend = True,
+       ax = ax1)
+ax1.set_axis_off()
+f1.show()
 ```
 
 
@@ -215,27 +232,29 @@ it does.
 
 
 
-```python
-regpops = [sum([geodata[currdat].population[i] for i in np.where(geodata[currdat].regindex_azp == j)[0]]) for j in range(7)]
-spanpops= [sum([geodata[currdat].hispanic[i] for i in np.where(geodata[currdat].regindex_azp == j)[0]]) for j in range(7)]
-whitepops = [sum([geodata[currdat].white_nh[i] for i in np.where(geodata[currdat].regindex_azp == j)[0]]) for j in range(7)]
-ntvpops= [sum([geodata[currdat].ntvam_nh[i] for i in np.where(geodata[currdat].regindex_azp == j)[0]]) for j in range(7)]
-```
+```python 
+
+regpops = [sum([geodata[currdat].population[i] for i in np.where(geodata[currdat].reg_azp == j)[0]]) for j in range(7)]
+spanpops= [sum([geodata[currdat].hispanic[i] for i in np.where(geodata[currdat].reg_azp == j)[0]]) for j in range(7)]
+whitepops = [sum([geodata[currdat].white_nh[i] for i in np.where(geodata[currdat].reg_azp == j)[0]]) for j in range(7)]
+ntvpops= [sum([geodata[currdat].ntvam_nh[i] for i in np.where(geodata[currdat].reg_azp == j)[0]]) for j in range(7)]
 
 
-```python
+
+
 f3, ax3 = plt.subplots(1)
 plt.bar(range(7),[i/(j+1) for (i,j) in zip(spanpops, regpops)])
 ax3.set_title('Hispanic Proportion of each District')
-```
 
+```
 
 District 2 has a high proportion of people who identify as hispanic,
 almost a majority.  In this hypothetical districting map, any
 candidate would have to address the concerns of this group.
 
 
-```python
+
+```python 
 f4, ax4 = plt.subplots(1)
 plt.bar(range(7),[i/(j+1) for (i,j) in zip(ntvpops, regpops)])
 ax4.set_title("Native American Proportion of each District")
@@ -270,13 +289,12 @@ law provides that each district be equal in population to within 5%.
 
 
 
-```python
+```python 
 distpop = sum(regpops)/7
-print('The largest district is ', max(regpops)/distpop -1, " above average")
-print('The smallest district is ', 1-min(regpops)/distpop, " below average")
-```
-    
+print('The largest district is {0:2.0f}% above average'.format((max(regpops)/distpop -1)*100))
+print('The smallest district is {0:2.0f}% below average'.format((1 - min(regpops)/distpop)*100))
 
+```
 Equal populations is part of the goal of the regionalization analysis,
 but it isn't weighted enough.
 

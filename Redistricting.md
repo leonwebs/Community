@@ -39,7 +39,6 @@ def loaddata(filename, url):
         geodat.rename({'pop':'population'}, axis = 'columns', inplace = True)
 
     return geodat
-
 files = ['tracts', 'counties', 'districts']
 urls = ['https://data.colorado.gov/resource/aevh-apr2.geojson?$limit=1300',
         'https://data.colorado.gov/resource/ewkj-ipn7.geojson',
@@ -47,6 +46,14 @@ urls = ['https://data.colorado.gov/resource/aevh-apr2.geojson?$limit=1300',
 
 geodata = {eachfile: loaddata(eachfile, eachurl) for (eachfile, eachurl) in zip(files, urls)}
 ```
+
+```
+/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
+packages/pysal/model/spvcm/abstracts.py:10: UserWarning: The `dill`
+module is required to use the sqlite backend fully.
+  from .sqlite import head_to_sql, start_sql
+```
+
 
 
 
@@ -63,8 +70,7 @@ resetting it to 'tracts' does what we want.
 
 
 ```python
-currdat = 'tracts'
-
+currdat = 'counties'
 
 print('The following columns have nan elements')
 badcol = geodata[currdat].columns[geodata[currdat].isnull().any()]
@@ -81,74 +87,75 @@ racecat = [ 'hispanic', 'white_nh', 'black_nh', 'ntvam_nh', 'asian_nh', 'hawpi_n
 
 ```
 The following columns have nan elements
-['med_age', 'med_fam_in', 'med_g_rent', 'avghhsize', 'med_hm_val',
-'med_c_rent', 'med_hh_inc', 'med_yr_blt', 'per_cap_in']
+[]
 ```
 
 
 
 ### Generating District Maps
 
-<!-- #### Max-p -->
+#### Max-p
 
-<!-- First we'd like to answer the question "Where are the communities?" -->
-<!-- The `max-p` algorithm divides a set of areas into regions with similar -->
-<!-- characteristics.  The number of regions is not set, but is chosen by -->
-<!-- the algorithm to optimize intra-region similarity.  It does require a -->
-<!-- minimum value for each region, in this case we'll say that each region -->
-<!-- requires at least 250,000 people, about 5% of the state.   -->
+First we'd like to answer the question "Where are the communities?"
+The `max-p` algorithm divides a set of areas into regions with similar
+characteristics.  The number of regions is not set, but is chosen by
+the algorithm to optimize intra-region similarity.  It does require a
+minimum value for each region, in this case we'll say that each region
+requires at least 250,000 people, about 5% of the state.  
 
-<!-- The maxp algorithm takes some time with the 1250 census tracts.   -->
-<!-- We'll only do it if asked or if there's no prior saved file.  -->
+The maxp algorithm takes some time with the 1250 census tracts.  
+We'll only do it if asked or if there's no prior saved file. 
 
 
-<!-- ```python -->
-<!-- new_maxp = False -->
+```python
+new_maxp = True
 
-<!-- if new_maxp == True or 'regindex_maxp' not in geodata[currdat].columns: -->
+if new_maxp == True or 'reg_maxp' not in geodata[currdat].columns:
 
-<!--    w = ps.queen_from_shapefile('data/'+currdat+'/'+currdat+'.shp', idVariable = 'geonum')   -->
-<!--    z = geodata[currdat][racecat].values -->
+   # w = ps.queen_from_shapefile('data/'+currdat+'/'+currdat+'.shp', idVariable = 'geonum')  
+   # z = geodata[currdat][racecat].values
 
-<!--    print("Beginning maxp regionalization of "+currdat+ "...") -->
-<!--    maxp = ps.region.Maxp(w, z, 500000 , geodata[currdat].population, initial=300) -->
-<!--    print("... done.") -->
+   print("Beginning maxp regionalization of "+currdat+ "...")
+   maxp = region.max_p_regions.heuristics.MaxPRegionsHeu()
+   maxp.fit_from_geodataframe(geodata[currdat], racecat, 'population', 500000, contiguity = 'queen')
+   # maxp = ps.region.Maxp(w, z, 500000 , geodata[currdat].population, initial=300)
+   print("... done.")
 
-<!--    lbls = pd.Series(maxp.area2region).reindex(geodata[currdat]['geonum']).astype(str)    -->
-<!--    geodata[currdat]= geodata[currdat].assign(regindex_maxp = lbls.values) -->
+   # lbls = pd.Series(maxp.area2region).reindex(geodata[currdat]['geonum']).astype(str)   
+   # geodata[currdat]= geodata[currdat].assign(regindex_maxp = lbls.values)
+
+   geodata[currdat]= geodata[currdat].assign(reg_maxp = maxp.labels_)
    
-<!--    geodata[currdat].to_file('data/'+currdat) -->
-   
-   
+   geodata[currdat].to_file('data/'+currdat)
+
+
+f, ax = plt.subplots(1, figsize=(9, 9))
+geodata[currdat].plot(column='reg_maxp',
+                      categorical=True,
+                      linewidth=0.1,
+                      edgecolor='white',
+                      ax=ax)
+ax.set_axis_off()
+plt.show()
+```
+
+```
+Beginning maxp regionalization of counties...
+... done.
+/Library/Frameworks/Python.framework/Versions/3.7/bin/pweave:29:
+UserWarning: Matplotlib is currently using agg, which is a non-GUI
+backend, so cannot show the figure.
+```
 
 
 
-<!-- f, ax = plt.subplots(1, figsize=(9, 9)) -->
-<!-- geodata[currdat].assign(cl=lbls.values).plot(column='cl', -->
-<!--                                      categorical=True, -->
-<!--                                      linewidth=0.1, -->
-<!--                                      edgecolor='white', -->
-<!--                                      ax=ax) -->
-<!-- ax.set_axis_off() -->
-<!-- plt.show() -->
-<!-- ``` -->
-
-<!-- ``` -->
-<!-- Beginning maxp regionalization of tracts... -->
-<!-- ... done. -->
-<!-- ``` -->
-
-<!-- ![](figures/Redistricting_figure3_1.png) -->
 
 
+Of course these cannot be congressional districts.  There must be only
+7 districts, one for each seat Colorado has in the House of
+Representatives.  In addition, there must be close to equal population
+in each district.  Here is how the current map does it.
 
-
-<!-- Of course these cannot be congressional districts.  There must be only -->
-<!-- 7 districts, one for each seat Colorado has in the House of -->
-<!-- Representatives.  In addition, there must be close to equal population -->
-<!-- in each district.  Here is how the current map does it. -->
-
-For reference, here is how Colorado's current lines are drawn
 
 ```python
 
@@ -161,27 +168,24 @@ geodata['districts'].plot(column="emp",
 ax2.set_axis_off()
 ```
 
-![](figures/Redistricting_figure4_1.png)
 
 
 
 
 #### AZP
 
-Now we will use the AZP algorithm to generate seven districts, one for
-each legislator Colorado is apportioned.  The algorithm optimizes an
-objective function, which in this case includes intra-region
-similarity and total population.
+Now we will use the AZP algorithm to generate a specific number of
+districts.  The algorithm optimizes an objective function, which in this
+case includes intra-region similarity and total population.  
 
 
-Now let's have a look at the output of the AZP regionalization of
-Colorado's census tracts.
+Now let's have a look at the output of the AZP regionalization of Colorado's census tracts.
 
 
 The AZP algorithm also takes some time with the 1250 census tracts.  
 The exact versions of these problems are np hard, and even the heuristic
 takes a while.  
-We'll only do it if asked or if there is no prior saved file.  
+Again we'll only do it if asked or if there is no prior saved file.  
 
 
 
@@ -222,15 +226,25 @@ ax1.set_axis_off()
 ```
 
 ```
-Beginning AZP regionalization of tracts...
-n_regions_per_comp {0: 7}
-comp_label 0
-n_regions_in_comp 7
-Regions in comp: {0, 1, 2, 3, 4, 5, 6}
-... done.
+Beginning AZP regionalization of counties...
 ```
 
-![](figures/Redistricting_figure5_1.png)
+```
+---------------------------------------------------------------------------AttributeError
+Traceback (most recent call last)<ipython-input-1-58742ccb6469> in
+<module>
+     12     pregazp.fit_from_geodataframe(geodata[currdat],
+['population']+racecat,
+     13                                   ndist, contiguity = "queen",
+---> 14                                   objective_func =
+region.objective_function.ObjectiveFunctionPairwiseWithTotal() )
+     15     print("... done.")
+     16     geodata[currdat].population =
+geodata[currdat].population/popweightfactor
+AttributeError: module 'region.objective_function' has no attribute
+'ObjectiveFunctionPairwiseWithTotal'
+```
+
 
 
 
@@ -261,6 +275,38 @@ whitepops = [sum([geodata[currdat].white_nh[i] for i in np.where(geodata[currdat
 ntvpops= [sum([geodata[currdat].ntvam_nh[i] for i in np.where(geodata[currdat].regindex_azp == j)[0]]) for j in range(7)]
 ```
 
+```
+---------------------------------------------------------------------------AttributeError
+Traceback (most recent call last)<ipython-input-1-9b14c16491d3> in
+<module>
+----> 1 regpops = [sum([geodata[currdat].population[i] for i in
+np.where(geodata[currdat].regindex_azp == j)[0]]) for j in range(7)]
+      2 spanpops= [sum([geodata[currdat].hispanic[i] for i in
+np.where(geodata[currdat].regindex_azp == j)[0]]) for j in range(7)]
+      3 whitepops = [sum([geodata[currdat].white_nh[i] for i in
+np.where(geodata[currdat].regindex_azp == j)[0]]) for j in range(7)]
+      4 ntvpops= [sum([geodata[currdat].ntvam_nh[i] for i in
+np.where(geodata[currdat].regindex_azp == j)[0]]) for j in range(7)]
+<ipython-input-1-9b14c16491d3> in <listcomp>(.0)
+----> 1 regpops = [sum([geodata[currdat].population[i] for i in
+np.where(geodata[currdat].regindex_azp == j)[0]]) for j in range(7)]
+      2 spanpops= [sum([geodata[currdat].hispanic[i] for i in
+np.where(geodata[currdat].regindex_azp == j)[0]]) for j in range(7)]
+      3 whitepops = [sum([geodata[currdat].white_nh[i] for i in
+np.where(geodata[currdat].regindex_azp == j)[0]]) for j in range(7)]
+      4 ntvpops= [sum([geodata[currdat].ntvam_nh[i] for i in
+np.where(geodata[currdat].regindex_azp == j)[0]]) for j in range(7)]
+/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
+packages/pandas/core/generic.py in __getattr__(self, name)
+   5178             if
+self._info_axis._can_hold_identifiers_and_holds_name(name):
+   5179                 return self[name]
+-> 5180             return object.__getattribute__(self, name)
+   5181
+   5182     def __setattr__(self, name, value):
+AttributeError: 'GeoDataFrame' object has no attribute 'regindex_azp'
+```
+
 
 
 
@@ -272,16 +318,22 @@ ax3.set_title('Hispanic Proportion of each District')
 ```
 
 ```
-Text(0.5, 1.0, 'Hispanic Proportion of each District')
+---------------------------------------------------------------------------NameError
+Traceback (most recent call last)<ipython-input-1-ae3c7f21afd0> in
+<module>
+      1 f3, ax3 = plt.subplots(1)
+----> 2 plt.bar(range(7),[i/(j+1) for (i,j) in zip(spanpops,
+regpops)])
+      3 ax3.set_title('Hispanic Proportion of each District')
+NameError: name 'spanpops' is not defined
 ```
 
-![](figures/Redistricting_figure7_1.png)
 
 
 
-District 5 has a high proportion of people who identify as hispanic.
-In this hypothetical districting map, any candidate would have to
-address the concerns of this group.
+District 2 has a high proportion of people who identify as hispanic,
+almost a majority.  In this hypothetical districting map, any
+candidate would have to address the concerns of this group.
 
 
 
@@ -292,15 +344,20 @@ ax4.set_title("Native American Proportion of each District")
 ```
 
 ```
-Text(0.5, 1.0, 'Native American Proportion of each District')
+---------------------------------------------------------------------------NameError
+Traceback (most recent call last)<ipython-input-1-743d9a0ab871> in
+<module>
+      1 f4, ax4 = plt.subplots(1)
+----> 2 plt.bar(range(7),[i/(j+1) for (i,j) in zip(ntvpops, regpops)])
+      3 ax4.set_title("Native American Proportion of each District")
+NameError: name 'ntvpops' is not defined
 ```
 
-![](figures/Redistricting_figure8_1.png)
 
 
 
-District 6 tends to maximize the Native American population.  However
-it is a lower fraction of the total population, so even in this
+District 1 tends to maximize the Native American population.  However
+it is a lower fraction of the total population, and even in this
 district only comes to 1%.  Even though this regionalization does have
 a region with high Native population, their voting power is still
 diluted with other (mostly white) groups'.
@@ -315,24 +372,30 @@ ax5.set_title("Proportion White in each District")
 ```
 
 ```
-Text(0.5, 1.0, 'Proportion White in each District')
+---------------------------------------------------------------------------NameError
+Traceback (most recent call last)<ipython-input-1-363a20cc408c> in
+<module>
+      1 f5, ax5 = plt.subplots(1)
+----> 2 plt.bar(range(7),[i/(j+1) for (i,j) in zip(whitepops,
+regpops)])
+      3 ax5.set_title("Proportion White in each District")
+NameError: name 'whitepops' is not defined
 ```
 
-![](figures/Redistricting_figure9_1.png)
 
 
 For comparison here is the white population in each district.  Only in
-District 5 are they less than the majority.
+District 2 are they less than the majority.
 
-The law provides that each district be equal in population to within
-5%.
+There is however a problem with this choice of regionalization.  The
+law provides that each district be equal in population to within 5%.
 > FIVE PERCENT DEVIATION TEST means that the sum of (a) the percent by
 > which the largest district's population exceeds that of the ideal
 > district and (b) the percent by which the smallest district's
 > population falls short of the population of the ideal district, must
 > be less than five percent. In re Reapportionment of
 > Colo. Gen. Ass'y, 647 P.2d 191 (Colo. 1982).
-These districts pass this test:
+
 
 
 
@@ -343,24 +406,30 @@ print('The smallest district is ', 1-min(regpops)/distpop, " below average")
 ```
 
 ```
-The largest district is  0.0011786954115307058  above average
-The smallest district is  0.0021947867744047667  below average
+---------------------------------------------------------------------------NameError
+Traceback (most recent call last)<ipython-input-1-9080238ccbfe> in
+<module>
+----> 1 distpop = sum(regpops)/7
+      2 print('The largest district is ', max(regpops)/distpop -1, "
+above average")
+      3 print('The smallest district is ', 1-min(regpops)/distpop, "
+below average")
+NameError: name 'regpops' is not defined
 ```
 
 
+    
 
-#### Future Work
+Equal populations is part of the goal of the regionalization analysis,
+but it isn't weighted enough.
 
-Clearly, more criteria need to be included in the optimization, most
-pressingly compactness.  No one would accept these lines, even though
-they are technically legal.  
+####Future Work
 
-Also we have a sense of how well the regionalization preserves
-communities of interest, but could we do better?  At what cost to the
-other optimization critera?  Is there a map that, for instance, gives
-a majority hispanic district, and how much would it sacrifice on other
-critera?  To answer that quantitatively, I'd like to generate a set of
-random regionalizations and see where our optimized regionalization
-ranks, both in variables that were optimized and those that weren't.
-This pseudo-p value will characterize how different weightings of
-variables affect the final result.  
+We'll have to better weight the requirement of even populations in
+order to have a map that passes muster.  In addition, we have a sense
+of how well the regionalization preserves communities of interest, but
+could we do better?  At what cost?  To answer that quantitatively, I'd
+like to generate a set of random regionalizations and see where our
+optimized regionalization ranks, both in variables that were optimized
+and those that weren't.  This pseudo-p value will characterize how
+different weightings of variables affect the final result.  
