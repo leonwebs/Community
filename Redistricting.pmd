@@ -320,8 +320,8 @@ isn't one that seeks to balance population among regions.  There also
 is no way to include several objectives.  I modified pysal's 
 `objective_function.py` to address this.  
 
-ObjectiveFunctionBalance is merely the spread between the highest and
-lowest total of the attribute.  ObjectiveFunctionComposite takes a
+`ObjectiveFunctionBalance` is merely the spread between the highest and
+lowest total of the attribute.  `ObjectiveFunctionComposite` takes a
 list of other objective functions, passes the same labels but
 different attributes, receives the values, and combines them into one
 overall result.  
@@ -436,7 +436,7 @@ print(human(f3(pregazp.labels_,
 
 ```python Composite
 
-new_azp  = True
+new_azp  = False
 if new_azp == True or 'reg' not in geodata[currdat].columns:
     pregazp = region.p_regions.azp.AZP()
     func = ObjectiveFunctionComposite(
@@ -470,6 +470,12 @@ geodata[currdat].plot(column='reg',
 ax[-1].set_axis_off()
 
 ```
+
+The districts still aren't balanced that well.  The largest district is 
+<% '{0:2.0f}%'.format((max(regpops)/distpop -1) * 100) %> 
+larger than average, and the smallest is 
+<%  '{0:2.0f}%'.format((1 - min(regpops)/distpop) * 100) %>
+smaller.  
 
 #### Future Work
 
