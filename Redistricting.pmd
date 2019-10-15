@@ -28,9 +28,7 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 import region
-from helpers.objective_functionpopu import (
-    ObjectiveFunctionComposite,
-    ObjectiveFunctionBalance)
+from helpers.objective_functionpopu import * 
 from ballpark import business as human
 
 from time import perf_counter as pfc
@@ -154,7 +152,7 @@ Representatives.
 ```python Current Districts
 
 f[len(f):], ax[len(ax):] = tuple(zip(  plt.subplots(1, figsize=(9, 9))  ))
-geodata[currdat].plot(column='emp',
+geodata['districts'].plot(column='emp',
                       categorical=True,
                       linewidth=0.1,
                       edgecolor='white',
@@ -476,6 +474,25 @@ The districts still aren't balanced that well.  The largest district is
 larger than average, and the smallest is 
 <%  '{0:2.0f}%'.format((1 - min(regpops)/distpop) * 100) %>
 smaller.  
+
+#### Including compactness
+
+The districts shown so far are absurd because they snake all around,
+just like Gerry's salamander.  Now let's include compactness in the
+objective by providing a compactness function that measures perimeter
+of the districts.   
+
+```python Compactness test, evaluate = False
+
+fperi = ObjectiveFunctionCompactness()
+
+labels = geodata[currdat].reg
+attr = geodata[currdat].geometry
+
+fperi(labels, attr)
+
+```
+
 
 #### Future Work
 

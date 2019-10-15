@@ -309,11 +309,10 @@ class ObjectiveFunctionCompactness(ObjectiveFunction):
         Objective function that tries to reduce total perimeter.  
         """
         #attribute is the geometry series
-        g = GeoDataFrame()
+        g = gpd.GeoDataFrame()
         g.geometry = attr
-        g.assign(templab = labels)
-        g.dissolve(by ='templab')
-        lens = g.length
+        g['templab'] = labels
+        lens = g.dissolve(by ='templab').length
  
         return sum(lens)
 
