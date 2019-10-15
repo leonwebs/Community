@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 import itertools
 import numpy as np
 
@@ -59,7 +60,7 @@ class ObjectiveFunction(ABC):
 
 
 class ObjectiveFunctionPairwise(ObjectiveFunction):
-    def __call__(self, labels, attr):
+    def __call__(self, labels, attr, flag = False):
         """
         Examples
         --------
@@ -76,6 +77,7 @@ class ObjectiveFunctionPairwise(ObjectiveFunction):
             self.metric(attr[i].reshape(1, -1), attr[j].reshape(1, -1))
             for r in regions_set
             for i, j in itertools.combinations(np.where(labels == r)[0], 2))
+        
         return obj_val
 
     def update(self, moving_area, recipient_region, labels, attr):
@@ -88,6 +90,7 @@ class ObjectiveFunctionPairwise(ObjectiveFunction):
         attr_recipient = attr[labels == recipient_region]
         recipient_diff = sum(
             self.metric(attr_recipient, attr[moving_area].reshape(1, -1)))
+    
         return recipient_diff - donor_diff
 
 
@@ -107,8 +110,9 @@ class ObjectiveFunctionCenter(ObjectiveFunction):
 
             * reducing the intraregional distances to a scalar and
             * reducing these scalars of the regions to one single scalar.
-        For example, the defaults make the objective function the sum over regions
-        of the sum over areas within the region of distances from the mean.
+        For example, the defaults make the objective function the sum over 
+        regions of the sum over areas within the region of distances from the 
+        mean.
         """
         self.center = center
         self.reduction = reduction
@@ -132,7 +136,8 @@ class ObjectiveFunctionCenter(ObjectiveFunction):
         """
         regions = sorted(set(labels))
         objective_per_region = [
-            self._intraregional_heterogeneity(labels, r, attr) for r in regions
+            self._intraregional_heterogeneity(labels, r, attr)
+            for r in regions
         ]
         obj_val = self.reduction(objective_per_region)
         return obj_val
@@ -174,14 +179,14 @@ class ObjectiveFunctionBalance(ObjectiveFunction):
         regions_set = set(labels)
         region_totals =[sum(attr[i] for i in np.where(labels == r)[0])
                         for r in regions_set]
-        obj_val = max(region_totals)-min(region_totals)
+        obj_val = (max(region_totals)-min(region_totals))
         return obj_val
 
     def update(self, moving_area, recipient_region, labels, attr):
-        old = self.__call__(labels, attr)
+        old = self(labels, attr)
         comebackregion = labels[moving_area]
         labels[moving_area] = recipient_region
-        new = self.__call__(labels, attr)
+        new = self(labels, attr)
         labels[moving_area] = comebackregion
         return new - old
 
@@ -198,7 +203,8 @@ class ObjectiveFunctionComposite(ObjectiveFunction):
     >>> metric = distance_metrics()["manhattan"]
     >>> labels = np.array([0, 0, 0, 0, 1, 1])
     >>> attr = np.arange(len(labels)).reshape(-1, 1)
-    >>> objective = ObjectiveFunctionComposite([ObjectiveFunctionPairwise,ObjectiveFunctionCenter], 
+    >>> objective = ObjectiveFunctionComposite([ObjectiveFunctionPairwise,
+                                                ObjectiveFunctionCenter], 
                                                 [(), (np.sum, )], metric)
     >>> int(objective(labels, attr))
     11
@@ -208,23 +214,30 @@ class ObjectiveFunctionComposite(ObjectiveFunction):
         Parameters
         ----------
         functiontuples: list
-            list of tuples containing a function name, function init arguments, 
+            list of tuples containing a function name, function init arguments,
             and length of sub section of attr
         weights: list
             How to weight each function.  
-        met : function
+        metric : function
             The metric to use for all listed functions and to compose 
             the results of each function
             Refer to the metric argument in
             :meth:`ObjectiveFunction.__init__`.
         """
+        if metric not in ["manhattan", None]:
+            print('''code needs fixing for metrics other than "manhattan".
+                     Using "manhattan."''')
+            metric = None
         super().__init__(metric)
         self.weights = weights
         self.get_ranges_from_attrlist(attrlist)
-        self.attr = [i for j in attrlist for i in j]
-        self.funclist = [f[0](metric = self.metric, *f[1]) for f in functiontuples]
+        self.flat_attr_list = [i for j in attrlist for i in j]
+        self.funclist = [f[0](*f[1])
+                         for f in functiontuples]
 
     def get_ranges_from_attrlist(self, attrlist):
+        # returns list of tuples representing ranges of each
+        # sub-objective attribute.  
         self.ranges = [0]
         for it in attrlist:
             try:
@@ -235,21 +248,82 @@ class ObjectiveFunctionComposite(ObjectiveFunction):
         self.ranges = list(zip(self.ranges, self.ranges[1:]))
 
     def __call__(self, labels, attr):
+        '''
+        Parameters
+        ----------
+        labels: vector-like
+            vector of areas each region belongs to
+        attr: array
+            array of attributes of each region, with columns in order of 
+            attribute list.  
+        '''
         vec = self.objvec(labels, attr)
-        return float(self.metric(vec, 0*vec))
+        return self.metric(vec, 0*vec).reshape(1)
 
     def objvec(self, labels, attr):
-        objvec = [f(labels, attr[:,slice(*r)]) for (f,r) in zip(self.funclist, self.ranges)]
+        if attr.shape[1] != len(self.flat_attr_list):
+            raise ValueError(
+                "The attribute array has {} columns, but the total number\n"
+                "of attributes listed is {}\n"
+                "attr[1,:] is {}\n"
+                "attribute list is {}\n"
+                .format(
+                    attr.shape[1],
+                    len(self.flat_attr_list),
+                    attr[1,:],
+                    self.flat_attr_list
+                )
+            )
+        objvec = [f(labels, attr[:,slice(*r)])
+                  for (f,r) in zip(self.funclist, self.ranges)]
+        objvec = np.array(objvec).reshape(1,-1)
         if self.weights is not None:
-            objvec *= np.array(self.weights)
-        return  np.array(objvec).reshape(1,-1)
+            objvec *= np.array(self.weights).reshape(1,-1)
+        return objvec
 
     def update(self, moving_area, recipient_region, labels, attr):
-        old = self.objvec(labels, attr)
-        ups = np.array([f.update(moving_area, recipient_region, labels, attr[:,slice(*r)])
-                        for (f,r) in zip(self.funclist, self.ranges)]).reshape(1,-1)
-        return float(self.metric(old, old+ups))
+        # old = self.objvec(labels, attr)
+        # zero = 0*old
+        # ups = np.array([f.update(moving_area, recipient_region, labels,
+        #                          attr[:,slice(*r)])
+        #                 for (f,r)
+        #                 in zip(self.funclist, self.ranges)]).reshape(1,-1)
+        # ups = float(self.metric(old+ups, zero)-self.metric(old,zero))
 
+        # the above is too slow, but the following only works for
+        # the manhattan metric.  
+        ups = np.array(
+            [f.update(moving_area, recipient_region, labels,
+                      attr[:, slice(*r)])
+             for (f, r)
+             in zip(self.funclist, self.ranges)]
+            ).reshape(1,-1)
+        if self.weights is not None:
+            ups *= np.array(self.weights).reshape(1,-1)
+                
+        return float(ups.sum())
+
+class ObjectiveFunctionCompactness(ObjectiveFunction):
+    def __call__(self, labels, attr):
+        """
+        Objective function that tries to reduce total perimeter.  
+        """
+        #attribute is the geometry series
+        g = GeoDataFrame()
+        g.geometry = attr
+        g.assign(templab = labels)
+        g.dissolve(by ='templab')
+        lens = g.length
+ 
+        return sum(lens)
+
+    def update(self, moving_area, recipient_region, labels, attr):
+        old = self.__call__(labels, attr)
+        comebackregion = labels[moving_area]
+        labels[moving_area] = recipient_region
+        new = self.__call__(labels, attr)
+        labels[moving_area] = comebackregion
+        return new - old
 
 
 
