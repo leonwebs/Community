@@ -12,7 +12,6 @@ they may be evaluated, too.  Finally, we include census data by
 county, which can validate our code more quickly because it has many
 fewer areas to cluster.
 
-
 ```python Imports
 
 import os
@@ -73,7 +72,7 @@ resetting it to 'tracts' does what we want.
 
 ```python Categories
 
-currdat = 'tracts'
+currdat = 'counties'
 
 print('The following columns have nan elements')
 badcol = geodata[currdat].columns[geodata[currdat].isnull().any()]
@@ -87,6 +86,8 @@ racecat = [ 'hispanic', 'white_nh', 'black_nh', 'ntvam_nh',
 #all income categories have some nans!
 #educationcat = [i for i in geodata[currdat].columns if 'gr' in i and i not in badcol]
 #educationcat.extend(['enrolled', 'n_enrolled'])
+
+ndist = 7
 
 def getpop(col, gdat = geodata[currdat], label = None):
     if label is None:
@@ -138,9 +139,6 @@ geodata[currdat].plot(column='reg_maxp',
                       ax=ax[-1])
 ax[-1].set_axis_off()
 
-
-ndist = 7
-
 ```
 
 
@@ -158,7 +156,6 @@ geodata['districts'].plot(column='emp',
                       edgecolor='white',
                       ax=ax[-1])
 ax[-1].set_axis_off()
-
 
 ```
 
@@ -328,121 +325,31 @@ Let's use these functions to generate a map that keeps race-based
 communities of interest, but also places equal numbers in each
 district.
 
-```python Time testing, evaluate = False, echo = False
-
-fcomp =  ObjectiveFunctionComposite(
-        [(ObjectiveFunctionBalance, ()),
-         (region.objective_function.ObjectiveFunctionPairwise, ())],
-        [['population'], racecat],
-        [0,1]
-    )        
-fpair = region.objective_function.ObjectiveFunctionPairwise()
-# t=[]
-
-labels = geodata[currdat].reg_azp
-attr = region.util.array_from_df_col(geodata[currdat], fcomp.flat_attr_list)
-
-pregazp = region.p_regions.azp.AZP()
-print("Beginning AZP regionalization of "+currdat+ "...")
-t.append(pfc())
-pregazp.fit_from_geodataframe(geodata[currdat], fcomp.flat_attr_list, 
-                              ndist, contiguity = "queen", 
-                              objective_func = fcomp
-                                  )
-t.append(pfc())
-pregazp.fit_from_geodataframe(geodata[currdat], racecat, 
-                              ndist, contiguity = "queen", 
-                              objective_func = fpair
-                                  )
-t.append(pfc())
-print('done')
-
-print(
-    [t[i]-t[i-1]
-     for i in range(len(t))][1:]
-)
-t=[]
-
-t.append(pfc())
-fcomp(labels, attr)
-t.append(pfc())
-fcomp.update(0,1,labels, attr)
-t.append(pfc())
-fpair(labels, attr[:, 1:])
-t.append(pfc())
-fpair.update(0,1,labels, attr[:, 1:])
-t.append(pfc())
-
-print(
-    [t[i]-t[i-1]
-     for i in range(len(t))][1:]
-)
-t=[]
-
-```
-
-```python test, evaluate = False, echo = False
-
-f1 = ObjectiveFunctionBalance()
-
-f2 = ObjectiveFunctionComposite(
-    [(ObjectiveFunctionBalance, ()),
-     (region.objective_function.ObjectiveFunctionPairwise, ())],
-    [['population'], racecat],
-    [1,0]
-)
-
-f3 = ObjectiveFunctionComposite(
-    [(ObjectiveFunctionBalance, ())],
-    [['population']]
-)
-
-
-pregazp = region.p_regions.azp.AZP()
-pregazp.fit_from_geodataframe(geodata[currdat],
-                              'population',
-                              ndist,
-                              contiguity = "queen", 
-                              objective_func = f1
-)
-print(human(f1(pregazp.labels_, geodata[currdat].population)))
-
-pregazp = region.p_regions.azp.AZP()
-pregazp.fit_from_geodataframe(geodata[currdat],
-                              f2.flat_attr_list,
-                              ndist,
-                              contiguity = "queen", 
-                              objective_func = f2
-)
-print(human(f2(pregazp.labels_,
-         region.util.array_from_df_col(geodata[currdat], f2.flat_attr_list)
-)))
-
-pregazp = region.p_regions.azp.AZP()
-pregazp.fit_from_geodataframe(geodata[currdat],
-                              f3.flat_attr_list,
-                              ndist,
-                              contiguity = "queen", 
-                              objective_func = f3
-)
-print(human(f3(pregazp.labels_,
-         region.util.array_from_df_col(geodata[currdat], f3.flat_attr_list)
-)))
-
-
-```
+`ObjectiveFunctionComposite` allows weighting each different
+sub-objective. To make values from each sub-objective comensurate,
+we'll scale each, by dividing by the `natural_weight`, a typical value
+of the objective function.  
 
 ```python Composite
+
+flist = [ObjectiveFunctionBalance,
+         ObjectiveFunctionPairwise
+]
+attlist = [['population'], racecat]
+
+def make_weight(functions, attributes):
+    return  np.fromiter(1/f().natural_weight(
+        region.util.array_from_df_col(geodata[currdat], at)
+    )
+             for (f, at)
+             in zip(flist, attlist ))
+
+w0 = make_weight(flist, attlist)
 
 new_azp  = False
 if new_azp == True or 'reg' not in geodata[currdat].columns:
     pregazp = region.p_regions.azp.AZP()
-    func = ObjectiveFunctionComposite(
-        [(ObjectiveFunctionBalance, ()),
-         (region.objective_function.ObjectiveFunctionPairwise, ())],
-        [['population'], racecat],
-        [2,1]
-    )        
+    func = ObjectiveFunctionComposite(flist, attlist, w0)        
     pregazp = region.p_regions.azp.AZP()
 
     print("Beginning AZP regionalization of "+currdat+ "...")
@@ -457,7 +364,6 @@ if new_azp == True or 'reg' not in geodata[currdat].columns:
     geodata[currdat] = geodata[currdat].assign(reg = pregazp.labels_)
 
     geodata[currdat].to_file('data/'+currdat+'.geojson', driver = 'GeoJSON')
-
 
 f[len(f):], ax[len(ax):] = tuple(zip(  plt.subplots(1, figsize=(9, 9))  ))
 geodata[currdat].plot(column='reg',
@@ -482,14 +388,32 @@ just like Gerry's salamander.  Now let's include compactness in the
 objective by providing a compactness function that measures perimeter
 of the districts.   
 
-```python Compactness test, evaluate = False
+```python Compactness 
 
-fperi = ObjectiveFunctionCompactness()
+flist.append(ObjectiveFunctionCompactness)
+attlist.append(['geometry'])
+w0 = make_weight(flist, attrlist)
 
-labels = geodata[currdat].reg
-attr = geodata[currdat].geometry
+pregazp = region.p_regions.azp.AZP()
+func = ObjectiveFunctionComposite(flist, attlist, w0)
 
-fperi(labels, attr)
+pregazp.fit_from_geodataframe(geodata[currdat],
+                              func.flat_attr_list,
+                              ndist,
+                              contiguity = 'queen',
+                              objective_func = func
+)
+
+f[len(f):], ax[len(ax):] = tuple(zip(  plt.subplots(1, figsize=(9, 9))  ))
+g['labels'] = pregazp.labels_
+g.plot(column='labels',
+       categorical=True,
+       linewidth=0.1,
+       edgecolor='white',
+       ax=ax[-1])
+ax[-1].set_axis_off()
+
+f[-1].show()
 
 ```
 

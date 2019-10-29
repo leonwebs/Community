@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
-
 import itertools
 import numpy as np
+import geopandas as gpd
 
 from region.util import get_metric_function
 
@@ -58,9 +58,13 @@ class ObjectiveFunction(ABC):
             The change in the objective function caused by moving `moving_area`
             to `recipient_region`."""
 
+    def natural_weight(self, attr, ndist = 7):
+        return 1
+    
+
 
 class ObjectiveFunctionPairwise(ObjectiveFunction):
-    def __call__(self, labels, attr, flag = False):
+    def __call__(self, labels, attr):
         """
         Examples
         --------
@@ -78,7 +82,7 @@ class ObjectiveFunctionPairwise(ObjectiveFunction):
             for r in regions_set
             for i, j in itertools.combinations(np.where(labels == r)[0], 2))
         
-        return obj_val
+        return float(obj_val)
 
     def update(self, moving_area, recipient_region, labels, attr):
         donor_region = labels[moving_area]
@@ -91,9 +95,13 @@ class ObjectiveFunctionPairwise(ObjectiveFunction):
         recipient_diff = sum(
             self.metric(attr_recipient, attr[moving_area].reshape(1, -1)))
     
-        return recipient_diff - donor_diff
+        return float(recipient_diff - donor_diff)
 
-
+    def natural_weight(self, attr, ndist = 7):
+        return self(np.zeros(attr.shape[0]), attr)/ndist
+        #/ len(l1)**2 * (len(l1)/ndist)**2 * ndist ,
+        #per pair       number of pairs per dist   districts
+        
 class ObjectiveFunctionCenter(ObjectiveFunction):
     def __init__(self, metric=None, center=np.mean, reduction=np.sum):
         """
@@ -179,7 +187,7 @@ class ObjectiveFunctionBalance(ObjectiveFunction):
         regions_set = set(labels)
         region_totals =[sum(attr[i] for i in np.where(labels == r)[0])
                         for r in regions_set]
-        obj_val = (max(region_totals)-min(region_totals))
+        obj_val = float(max(region_totals)-min(region_totals))
         return obj_val
 
     def update(self, moving_area, recipient_region, labels, attr):
@@ -189,6 +197,9 @@ class ObjectiveFunctionBalance(ObjectiveFunction):
         new = self(labels, attr)
         labels[moving_area] = comebackregion
         return new - old
+
+    def natural_weight(self, attr, ndist = 7):
+        return float(.05*sum(attr))
 
 
 class ObjectiveFunctionComposite(ObjectiveFunction):
@@ -209,13 +220,14 @@ class ObjectiveFunctionComposite(ObjectiveFunction):
     >>> int(objective(labels, attr))
     11
     """
-    def __init__(self, functiontuples, attrlist, weights = None, metric = None):
+    def __init__(self, funclist, attrlist,
+                 weights = None, metric = None, arglist = None):
         """
         Parameters
         ----------
-        functiontuples: list
-            list of tuples containing a function name, function init arguments,
-            and length of sub section of attr
+        funclist: list
+            list of function names
+        attrlist: list of attributes to be applied to each function
         weights: list
             How to weight each function.  
         metric : function
@@ -232,8 +244,9 @@ class ObjectiveFunctionComposite(ObjectiveFunction):
         self.weights = weights
         self.get_ranges_from_attrlist(attrlist)
         self.flat_attr_list = [i for j in attrlist for i in j]
-        self.funclist = [f[0](*f[1])
-                         for f in functiontuples]
+        if arglist == None:
+            arglist = [() for f in funclist]
+        self.functions = [f(*a) for (f, a) in zip(funclist, arglist)]
 
     def get_ranges_from_attrlist(self, attrlist):
         # returns list of tuples representing ranges of each
@@ -275,7 +288,7 @@ class ObjectiveFunctionComposite(ObjectiveFunction):
                 )
             )
         objvec = [f(labels, attr[:,slice(*r)])
-                  for (f,r) in zip(self.funclist, self.ranges)]
+                  for (f,r) in zip(self.functions, self.ranges)]
         objvec = np.array(objvec).reshape(1,-1)
         if self.weights is not None:
             objvec *= np.array(self.weights).reshape(1,-1)
@@ -287,7 +300,7 @@ class ObjectiveFunctionComposite(ObjectiveFunction):
         # ups = np.array([f.update(moving_area, recipient_region, labels,
         #                          attr[:,slice(*r)])
         #                 for (f,r)
-        #                 in zip(self.funclist, self.ranges)]).reshape(1,-1)
+        #                 in zip(self.functions, self.ranges)]).reshape(1,-1)
         # ups = float(self.metric(old+ups, zero)-self.metric(old,zero))
 
         # the above is too slow, but the following only works for
@@ -296,7 +309,7 @@ class ObjectiveFunctionComposite(ObjectiveFunction):
             [f.update(moving_area, recipient_region, labels,
                       attr[:, slice(*r)])
              for (f, r)
-             in zip(self.funclist, self.ranges)]
+             in zip(self.functions, self.ranges)]
             ).reshape(1,-1)
         if self.weights is not None:
             ups *= np.array(self.weights).reshape(1,-1)
@@ -307,22 +320,30 @@ class ObjectiveFunctionCompactness(ObjectiveFunction):
     def __call__(self, labels, attr):
         """
         Objective function that tries to reduce total perimeter.  
+        attr must be the geometry series
         """
-        #attribute is the geometry series
-        g = gpd.GeoDataFrame()
-        g.geometry = attr
+        g = gpd.GeoDataFrame(attr, columns = ['geometry'])
         g['templab'] = labels
-        lens = g.dissolve(by ='templab').length
+        lengths = g.dissolve(by ='templab').length
  
-        return sum(lens)
+        return sum(lengths)
 
     def update(self, moving_area, recipient_region, labels, attr):
-        old = self.__call__(labels, attr)
-        comebackregion = labels[moving_area]
-        labels[moving_area] = recipient_region
-        new = self.__call__(labels, attr)
-        labels[moving_area] = comebackregion
-        return new - old
+        # the boundary between the moving area and its neighbors in
+        # the same region is added, and the boundary between it and
+        # its neighbors in the recipient region is lost.
+
+        g = gpd.GeoDataFrame(attr, columns = ['geometry'])
+        w = (labels == moving_area).astype(int)
+        w -= (labels == labels[recipient_region]).astype(int)
+        w[moving_area] = 0
+        lengths = [a.intersection(g.geometry[moving_area]).length * w[i]
+                   for i,a in enumerate(g.geometry)]
+        return sum(lengths)*2
+
+    def natural_weight(self, attr, ndist = 7):
+        return self(np.zeros(attr.shape[0]), attr) * ndist**.5
+    
 
 
 
