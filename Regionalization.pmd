@@ -59,7 +59,7 @@ urls = ['https://data.colorado.gov/resource/aevh-apr2.geojson?$limit=1300',
         'https://data.colorado.gov/resource/jz4n-qus2.geojson']
 urls = dict(zip(files, urls))
 geodata = {eachfile: loaddata(eachfile, urls[eachfile]) for eachfile in files}
-currdat = 'counties'
+currdat = 'tracts'
 
 badcol = geodata['tracts'].columns[geodata['tracts'].isnull().any()]
 racecat = [ 'hispanic', 'white_nh', 'black_nh', 'ntvam_nh',
@@ -123,16 +123,15 @@ if new_maxp == True or 'maxp' not in regdat[currdat].columns:
                               'population', 500000, contiguity = 'queen')
    print("... done.")
 
-   geodata[currdat]= geodata[currdat].assign(reg_maxp = maxp.labels_)
-   
-   geodata[currdat].to_file('data/'+currdat+'.geojson', driver = 'GeoJSON')
-
+   regdat[currdat] = regdat[currdat].assign(maxp = pregazp.labels_)
+   regdat[currdat].to_csv('data/'+currdat+'regions.csv', index = False)
 
 f = []
 ax = []
 
 f[len(f):], ax[len(ax):] = tuple(zip(  plt.subplots(1, figsize=(9, 9))  ))
-geodata[currdat].plot(column='reg_maxp',
+geodata[currdat]['labels'] = regdat[currdat]['maxp']
+geodata[currdat].plot(column='labels',
                       categorical=True,
                       linewidth=0.1,
                       edgecolor='white',
@@ -192,7 +191,8 @@ if new_azp == True or 'pair' not in regdat[currdat].columns:
     regdat[currdat].to_csv('data/'+currdat+'regions.csv', index = False)
 
 f[len(f):], ax[len(ax):] = tuple(zip(  plt.subplots(1, figsize=(9, 9))  ))
-geodata[currdat].plot(column='reg_azp',
+geodata[currdat]['labels'] = regdat[currdat]['pair']
+geodata[currdat].plot(column='labels',
                       categorical=True,
                       linewidth=0.1,
                       edgecolor='white',
@@ -294,7 +294,9 @@ if new_azp == True or 'pair_bal' not in regdat[currdat].columns:
     regdat[currdat].to_csv('data/'+currdat+'regions.csv', index = False)
 
 f[len(f):], ax[len(ax):] = tuple(zip(  plt.subplots(1, figsize=(9, 9))  ))
-geodata[currdat].plot(column='reg_comp',
+                                                             
+geodata[currdat]['labels'] = regdat[currdat]['pair_bal']
+geodata[currdat].plot(column='labels',
                       categorical=True,
                       linewidth=0.1,
                       edgecolor='white',
@@ -314,7 +316,7 @@ smaller.
 The districts shown so far are absurd because they snake all around,
 just like Gerry's salamander.  Now let's include compactness in the
 objective by providing a compactness function that measures perimeter
-of the districts.   
+of the districts.  
 
 ```python Compactness 
 
@@ -337,15 +339,13 @@ if new_azp == True or 'pair_bal_pact' not in regdat[currdat].columns:
     regdat[currdat].to_csv('data/'+currdat+'regions.csv', index = False)
 
 f[len(f):], ax[len(ax):] = tuple(zip(  plt.subplots(1, figsize=(9, 9))  ))
-g['labels'] = pregazp.labels_
-g.plot(column='labels',
-       categorical=True,
-       linewidth=0.1,
-       edgecolor='white',
-       ax=ax[-1])
+geodat[currdat]['labels'] = regdat[currdat]['pair_bal_pact']
+geodat[currdat].plot(column='labels',
+                     categorical=True,
+                     linewidth=0.1,
+                     edgecolor='white',
+                     ax=ax[-1])
 ax[-1].set_axis_off()
-
-f[-1].show()
 
 ```
 

@@ -40,7 +40,7 @@ urls = ['https://data.colorado.gov/resource/aevh-apr2.geojson?$limit=1300',
         'https://data.colorado.gov/resource/jz4n-qus2.geojson']
 urls = dict(zip(files, urls))
 geodata = {eachfile: loaddata(eachfile, urls[eachfile]) for eachfile in files}
-currdat = 'counties'
+currdat = 'tracts'
 
 badcol = geodata['tracts'].columns[geodata['tracts'].isnull().any()]
 racecat = [ 'hispanic', 'white_nh', 'black_nh', 'ntvam_nh',
@@ -88,7 +88,7 @@ f,ax = ([], [])
 f[len(f):], ax[len(ax):] = tuple(zip(  plt.subplots(1)  ))
 plt.bar(range(7),[i/(j+1) for (i,j) in zip(spanpops, regpops)])
 ax[-1].set_title('Hispanic Proportion of each District')
-f[-1].show()
+
 ```
 
 District <% spanpops.index(max(spanpops)) %> has a high proportion of
@@ -102,7 +102,6 @@ concerns of this group.
 f[len(f):], ax[len(ax):] = tuple(zip(  plt.subplots(1)  ))
 plt.bar(range(7),[i/(j+1) for (i,j) in zip(ntvpops, regpops)])
 ax[-1].set_title("Native American Proportion of each District")
-f[-1].show()
 
 ```
 
@@ -123,7 +122,7 @@ f[len(f):], ax[len(ax):] = tuple(zip(  plt.subplots(1)  ))
 pwhite =np.array([i/(j+1) for (i,j) in zip(whitepops, regpops)])
 plt.bar(range(7),pwhite)
 ax[-1].set_title("Proportion White in each District")
-f[-1].show()
+
 ```
 
 For comparison here is the white population in each district.  Only in

@@ -41,7 +41,7 @@ urls = ['https://data.colorado.gov/resource/aevh-apr2.geojson?$limit=1300',
         'https://data.colorado.gov/resource/jz4n-qus2.geojson']
 urls = dict(zip(files, urls))
 geodata = {eachfile: loaddata(eachfile, urls[eachfile]) for eachfile in files}
-currdat = 'counties'
+currdat = 'tracts'
 
 badcol = geodata['tracts'].columns[geodata['tracts'].isnull().any()]
 racecat = [ 'hispanic', 'white_nh', 'black_nh', 'ntvam_nh',
@@ -91,20 +91,16 @@ f,ax = ([], [])
 f[len(f):], ax[len(ax):] = tuple(zip(  plt.subplots(1)  ))
 plt.bar(range(7),[i/(j+1) for (i,j) in zip(spanpops, regpops)])
 ax[-1].set_title('Hispanic Proportion of each District')
-f[-1].show()
 ```
 
 ```
-/Library/Frameworks/Python.framework/Versions/3.7/bin/pweave:11:
-UserWarning: Matplotlib is currently using
-module://ipykernel.pylab.backend_inline, which is a non-GUI backend,
-so cannot show the figure.
+Text(0.5, 1.0, 'Hispanic Proportion of each District')
 ```
 
 ![](figures/DistAnalysis_figure2_1.png)\
 
 
-District 6 has a high proportion of
+District 3 has a high proportion of
 people who identify as hispanic, almost a majority.  In this
 hypothetical districting map, any candidate would have to address the
 concerns of this group.
@@ -116,22 +112,17 @@ concerns of this group.
 f[len(f):], ax[len(ax):] = tuple(zip(  plt.subplots(1)  ))
 plt.bar(range(7),[i/(j+1) for (i,j) in zip(ntvpops, regpops)])
 ax[-1].set_title("Native American Proportion of each District")
-f[-1].show()
 ```
 
 ```
-/Library/Frameworks/Python.framework/Versions/3.7/bin/pweave:4:
-UserWarning: Matplotlib is currently using
-module://ipykernel.pylab.backend_inline, which is a non-GUI backend,
-so cannot show the figure.
-  import sys
+Text(0.5, 1.0, 'Native American Proportion of each District')
 ```
 
 ![](figures/DistAnalysis_figure3_1.png)\
 
 
 
-District 6 tends to maximize the
+District 0 tends to maximize the
 Native American population.  However it is a lower fraction of the
 total population, and even in this district only comes to 
 ' 1%'.  
@@ -148,19 +139,15 @@ f[len(f):], ax[len(ax):] = tuple(zip(  plt.subplots(1)  ))
 pwhite =np.array([i/(j+1) for (i,j) in zip(whitepops, regpops)])
 plt.bar(range(7),pwhite)
 ax[-1].set_title("Proportion White in each District")
-f[-1].show()
 ```
 
 ```
-/Library/Frameworks/Python.framework/Versions/3.7/bin/pweave:5:
-UserWarning: Matplotlib is currently using
-module://ipykernel.pylab.backend_inline, which is a non-GUI backend,
-so cannot show the figure.
+Text(0.5, 1.0, 'Proportion White in each District')
 ```
 
 ![](figures/DistAnalysis_figure4_1.png)\
 
 
 For comparison here is the white population in each district.  Only in
-District [] are they less than the
+District [3] are they less than the
 majority.
