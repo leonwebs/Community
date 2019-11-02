@@ -16,7 +16,8 @@ are slow.  Setting the global variable currdat to 'counties' lets us
 check the code quickly and then resetting it to 'tracts' does what we
 want.
 
-The initialization code is at [helpers/__init__.py]()
+The initialization code is at 
+[helpers/__init__.py](./blob/master/helpers/__init__.py)
 
 ```python Imports
 import os
@@ -81,8 +82,8 @@ def getpop(col, gdat = None, label = None):
     return [sum([gdat[col][i] for i in np.where(label == j)[0]])
             for j in range(1+int(max(gdat.reg_azp)))]
 
-regdat = {'counties': pd.read_csv('data/countyregions.csv'),
-          'tracts': pd.read_csv('data/tractregions.csv')}
+regdat = {eachfile : pd.read_csv('data/'+eachfile+'regions.csv')
+ for eachfile in files[:2]}
 ```
 
 The datasets are missing data; the medians sometimes not defined for a
