@@ -16,8 +16,8 @@ the most nebulous is the consideration of "communities of interest":
 It makes sense to do this, because groups with common interests ought
 to have a common representitive.  Especially in the case of
 underrepresented minorities, grouping their vote (to an extent) helps
-prevent the tyranny of the majority.  Indeed the Civil Rights Act of
-nnnn requires states to draw "majority minority" districts where
+prevent the tyranny of the majority.  Indeed the Voting Rights Act of
+1965 requires states to draw "majority minority" districts where
 possible so that these groups can have a voice in the legislatures.  
 
 However, preservation of communities of interest is not quantitatively defined.
