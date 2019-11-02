@@ -333,120 +333,7 @@ geodata[currdat].plot(column='labels',
 ax[-1].set_axis_off()
 ```
 
-```
----------------------------------------------------------------------------KeyboardInterrupt
-Traceback (most recent call last)<ipython-input-1-ebf4cf81c8ad> in
-<module>
-     11     return  np.fromiter(iter, float)
-     12
----> 13 w0 = make_weight(flist, attlist)
-     14
-     15 new_azp  = False
-<ipython-input-1-ebf4cf81c8ad> in make_weight(functions, attributes)
-      9             for (f, at)
-     10             in zip(functions, attributes))
----> 11     return  np.fromiter(iter, float)
-     12
-     13 w0 = make_weight(flist, attlist)
-<ipython-input-1-ebf4cf81c8ad> in <genexpr>(.0)
-      7     iter = (1/
-      8
-(f().natural_weight(region.util.array_from_df_col(geodata[currdat],
-at)))
-----> 9             for (f, at)
-     10             in zip(functions, attributes))
-     11     return  np.fromiter(iter, float)
-/Volumes/LEON/Community/helpers/objective_functionpopu.py in
-natural_weight(self, attr, ndist)
-     99
-    100     def natural_weight(self, attr, ndist = 7):
---> 101         return self(np.zeros(attr.shape[0]), attr)/ndist
-    102         #/ len(l1)**2 * (len(l1)/ndist)**2 * ndist ,
-    103         #per pair       number of pairs per dist   districts
-/Volumes/LEON/Community/helpers/objective_functionpopu.py in
-__call__(self, labels, attr)
-     80         obj_val = sum(
-     81             self.metric(attr[i].reshape(1, -1),
-attr[j].reshape(1, -1))
----> 82             for r in regions_set
-     83             for i, j in itertools.combinations(np.where(labels
-== r)[0], 2))
-     84
-/Volumes/LEON/Community/helpers/objective_functionpopu.py in
-<genexpr>(.0)
-     81             self.metric(attr[i].reshape(1, -1),
-attr[j].reshape(1, -1))
-     82             for r in regions_set
----> 83             for i, j in itertools.combinations(np.where(labels
-== r)[0], 2))
-     84
-     85         return float(obj_val)
-/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
-packages/sklearn/metrics/pairwise.py in manhattan_distances(X, Y,
-sum_over_features)
-    630            [1., 1.]])
-    631     """
---> 632     X, Y = check_pairwise_arrays(X, Y)
-    633
-    634     if issparse(X) or issparse(Y):
-/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
-packages/sklearn/metrics/pairwise.py in check_pairwise_arrays(X, Y,
-precomputed, dtype)
-    110     else:
-    111         X = check_array(X, accept_sparse='csr', dtype=dtype,
---> 112                         estimator=estimator)
-    113         Y = check_array(Y, accept_sparse='csr', dtype=dtype,
-    114                         estimator=estimator)
-/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
-packages/sklearn/utils/validation.py in check_array(array,
-accept_sparse, accept_large_sparse, dtype, order, copy,
-force_all_finite, ensure_2d, allow_nd, ensure_min_samples,
-ensure_min_features, warn_on_dtype, estimator)
-    540         if force_all_finite:
-    541             _assert_all_finite(array,
---> 542                                allow_nan=force_all_finite ==
-'allow-nan')
-    543
-    544     if ensure_min_samples > 0:
-/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
-packages/sklearn/utils/validation.py in _assert_all_finite(X,
-allow_nan)
-     47     # safely to reduce dtype induced overflows.
-     48     is_float = X.dtype.kind in 'fc'
----> 49     if is_float and (np.isfinite(_safe_accumulator_op(np.sum,
-X))):
-     50         pass
-     51     elif is_float:
-/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
-packages/sklearn/utils/extmath.py in _safe_accumulator_op(op, x,
-*args, **kwargs)
-    686         result = op(x, *args, **kwargs, dtype=np.float64)
-    687     else:
---> 688         result = op(x, *args, **kwargs)
-    689     return result
-    690
-<__array_function__ internals> in sum(*args, **kwargs)
-/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
-packages/numpy/core/fromnumeric.py in sum(a, axis, dtype, out,
-keepdims, initial, where)
-   2180
-   2181     return _wrapreduction(a, np.add, 'sum', axis, dtype, out,
-keepdims=keepdims,
--> 2182                           initial=initial, where=where)
-   2183
-   2184
-/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
-packages/numpy/core/fromnumeric.py in _wrapreduction(obj, ufunc,
-method, axis, dtype, out, **kwargs)
-     88                 return reduction(axis=axis, out=out,
-**passkwargs)
-     89
----> 90     return ufunc.reduce(obj, axis, dtype, out, **passkwargs)
-     91
-     92
-KeyboardInterrupt:
-```
-
+![](figures/Regionalization_Composite_1.png){#Composite }\
 
 
 The districts still aren't balanced that well.  The largest district is 
@@ -494,107 +381,96 @@ ax[-1].set_axis_off()
 ```
 
 ```
+n_regions_per_comp {0: 7}
+comp_label 0
+n_regions_in_comp 7
+Regions in comp: {0, 1, 2, 3, 4, 5, 6}
+```
+
+```
 ---------------------------------------------------------------------------KeyboardInterrupt
 Traceback (most recent call last)<ipython-input-1-d001aed16e61> in
 <module>
-      1 flist.append(ObjectiveFunctionCompactness)
-      2 attlist.append(['geometry'])
-----> 3 w0 = make_weight(flist, attlist)
-      4
-      5 if new_azp == True or 'pair_bal_pact' not in
-regdat[currdat].columns:
-<ipython-input-1-ebf4cf81c8ad> in make_weight(functions, attributes)
-      9             for (f, at)
-     10             in zip(functions, attributes))
----> 11     return  np.fromiter(iter, float)
-     12
-     13 w0 = make_weight(flist, attlist)
-<ipython-input-1-ebf4cf81c8ad> in <genexpr>(.0)
-      7     iter = (1/
-      8
-(f().natural_weight(region.util.array_from_df_col(geodata[currdat],
-at)))
-----> 9             for (f, at)
-     10             in zip(functions, attributes))
-     11     return  np.fromiter(iter, float)
-/Volumes/LEON/Community/helpers/objective_functionpopu.py in
-natural_weight(self, attr, ndist)
-     99
-    100     def natural_weight(self, attr, ndist = 7):
---> 101         return self(np.zeros(attr.shape[0]), attr)/ndist
-    102         #/ len(l1)**2 * (len(l1)/ndist)**2 * ndist ,
-    103         #per pair       number of pairs per dist   districts
-/Volumes/LEON/Community/helpers/objective_functionpopu.py in
-__call__(self, labels, attr)
-     80         obj_val = sum(
-     81             self.metric(attr[i].reshape(1, -1),
-attr[j].reshape(1, -1))
----> 82             for r in regions_set
-     83             for i, j in itertools.combinations(np.where(labels
-== r)[0], 2))
-     84
-/Volumes/LEON/Community/helpers/objective_functionpopu.py in
-<genexpr>(.0)
-     81             self.metric(attr[i].reshape(1, -1),
-attr[j].reshape(1, -1))
-     82             for r in regions_set
----> 83             for i, j in itertools.combinations(np.where(labels
-== r)[0], 2))
-     84
-     85         return float(obj_val)
+     11                                   ndist,
+     12                                   contiguity = 'queen',
+---> 13                                   objective_func = func
+     14     )
+     15
 /Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
-packages/sklearn/metrics/pairwise.py in manhattan_distances(X, Y,
-sum_over_features)
-    630            [1., 1.]])
-    631     """
---> 632     X, Y = check_pairwise_arrays(X, Y)
-    633
-    634     if issparse(X) or issparse(Y):
+packages/region/p_regions/azp.py in fit_from_geodataframe(self, gdf,
+attr, n_regions, contiguity, initial_labels, objective_func)
+    236         attr = array_from_df_col(gdf, attr)
+    237         self.fit_from_w(
+--> 238             w, attr, n_regions, initial_labels,
+objective_func=objective_func)
+    239
+    240     def fit_from_dict(self,
 /Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
-packages/sklearn/metrics/pairwise.py in check_pairwise_arrays(X, Y,
-precomputed, dtype)
-    112                         estimator=estimator)
-    113         Y = check_array(Y, accept_sparse='csr', dtype=dtype,
---> 114                         estimator=estimator)
-    115
-    116     if precomputed:
+packages/region/p_regions/azp.py in fit_from_w(self, w, attr,
+n_regions, initial_labels, objective_func)
+    146             n_regions,
+    147             initial_labels,
+--> 148             objective_func=objective_func)
+    149
+    150     def fit_from_networkx(self,
 /Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
-packages/sklearn/utils/validation.py in check_array(array,
-accept_sparse, accept_large_sparse, dtype, order, copy,
-force_all_finite, ensure_2d, allow_nd, ensure_min_samples,
-ensure_min_features, warn_on_dtype, estimator)
-    540         if force_all_finite:
-    541             _assert_all_finite(array,
---> 542                                allow_nan=force_all_finite ==
-'allow-nan')
-    543
-    544     if ensure_min_samples > 0:
+packages/region/p_regions/azp.py in fit_from_scipy_sparse_matrix(self,
+adj, attr, n_regions, initial_labels, objective_func)
+    104
+    105             labels_comp = self._azp_connected_component(
+--> 106                 adj_comp, labels_comp, attr_comp)
+    107             labels[comp_idx] = labels_comp
+    108
 /Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
-packages/sklearn/utils/validation.py in _assert_all_finite(X,
-allow_nan)
-     47     # safely to reduce dtype induced overflows.
-     48     is_float = X.dtype.kind in 'fc'
----> 49     if is_float and (np.isfinite(_safe_accumulator_op(np.sum,
-X))):
-     50         pass
-     51     elif is_float:
+packages/region/p_regions/azp.py in _azp_connected_component(self,
+adj, initial_clustering, attr)
+    350                             adj,
+    351                             np.where(labels ==
+neigh_region)[0],
+--> 352                             wo_nodes=neigh)
+    353                         if is_connected(sub_adj):
+    354                             # if area is alone in its region,
+it must stay
 /Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
-packages/sklearn/utils/extmath.py in _safe_accumulator_op(op, x,
-*args, **kwargs)
-    683     result : The output of the accumulator function passed to
-this function
-    684     """
---> 685     if np.issubdtype(x.dtype, np.floating) and
-x.dtype.itemsize < 8:
-    686         result = op(x, *args, **kwargs, dtype=np.float64)
-    687     else:
+packages/region/csgraph_utils.py in sub_adj_matrix(adj, nodes,
+wo_nodes)
+    124         nodes = nodes[mask]
+    125     nodes = nodes[:, None]
+--> 126     return csr_matrix(adj[nodes, nodes.T])
+    127
 /Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
-packages/numpy/core/numerictypes.py in issubdtype(arg1, arg2)
-    390
-    391     """
---> 392     if not issubclass_(arg1, generic):
-    393         arg1 = dtype(arg1).type
-    394     if not issubclass_(arg2, generic):
+packages/scipy/sparse/_index.py in __getitem__(self, key)
+     73         if row.size == 0:
+     74             return self.__class__(np.atleast_2d(row).shape,
+dtype=self.dtype)
+---> 75         return self._get_arrayXarray(row, col)
+     76
+     77     def __setitem__(self, key, x):
+/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
+packages/scipy/sparse/compressed.py in _get_arrayXarray(self, row,
+col)
+    666         if major.ndim == 1:
+    667             return asmatrix(val)
+--> 668         return self.__class__(val.reshape(major.shape))
+    669
+    670     def _get_columnXarray(self, row, col):
+/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
+packages/scipy/sparse/compressed.py in __init__(self, arg1, shape,
+dtype, copy)
+     86                                  "".format(self.format))
+     87             from .coo import coo_matrix
+---> 88             self._set_self(self.__class__(coo_matrix(arg1,
+dtype=dtype)))
+     89
+     90         # Read matrix dimensions given, if any
+/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-
+packages/scipy/sparse/coo.py in __init__(self, arg1, shape, dtype,
+copy)
+    189                                          (shape, self._shape))
+    190
+--> 191                 self.row, self.col = M.nonzero()
+    192                 self.data = M[self.row, self.col]
+    193                 self.has_canonical_format = True
 KeyboardInterrupt:
 ```
 
